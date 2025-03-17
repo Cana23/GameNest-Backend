@@ -28,8 +28,6 @@
   <ItemGroup>
     <Folder Include="Models\Domain\" />
     <Folder Include="Context\" />
-    <Folder Include="Service\IServices\" />
-    <Folder Include="Service\Services\" />
   </ItemGroup>
 
 </Project>
