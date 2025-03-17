@@ -90,7 +90,7 @@ builder.Services.AddSwaggerGen(c =>
         }
     });
 });
-
+builder.Services.AddCors();
 builder.Services.AddControllers();
 
 var app = builder.Build();
@@ -132,7 +132,11 @@ using (var scope = app.Services.CreateScope())
 
 app.UseSwagger();
 app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Auth API v1"));
-
+app.UseCors(
+    options => options.WithOrigins("http://localhost:5173").AllowAnyMethod()
+                  .AllowAnyHeader()
+                  .AllowCredentials()
+);
 app.UseAuthentication();
 app.UseAuthorization();
 
