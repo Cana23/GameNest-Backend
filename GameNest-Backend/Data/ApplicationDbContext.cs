@@ -9,6 +9,7 @@ public class ApplicationDbContext : IdentityDbContext<User>
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
         : base(options) { }
 
+    public DbSet<Publication> Publications { get; set; }
     public DbSet<Comment> Comments { get; set; }
     public DbSet<Follower> Followers { get; set; }
     public DbSet<Like> Likes { get; set; }

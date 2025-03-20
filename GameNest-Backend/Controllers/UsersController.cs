@@ -24,7 +24,6 @@ public class UsersController : ControllerBase
     }
 
     // GET: api/users
-    [Authorize(Policy = "AdminOnly")]
     [HttpGet]
     public async Task<IActionResult> GetAllUsers()
     {
@@ -49,7 +48,6 @@ public class UsersController : ControllerBase
     }
 
     // GET: api/users/{id}
-    [Authorize(Policy = "AllUsers")]
     [HttpGet("{id}")]
     public async Task<IActionResult> GetUser(string id)
     {
@@ -69,7 +67,6 @@ public class UsersController : ControllerBase
     }
 
     // POST: api/users
-    [Authorize(Policy = "AdminOnly")]
     [HttpPost]
     public async Task<IActionResult> CreateUser([FromBody] UserCreateDTO dto)
     {
@@ -109,7 +106,6 @@ public class UsersController : ControllerBase
     }
 
     // PUT: api/users/{id}
-    [Authorize(Policy = "AdminOnly")]
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateUser(string id, [FromBody] UserUpdateDTO dto)
     {
@@ -152,7 +148,6 @@ public class UsersController : ControllerBase
     }
 
     // DELETE: api/users/{id}
-    [Authorize(Policy = "AdminOnly")]
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteUser(string id)
     {
