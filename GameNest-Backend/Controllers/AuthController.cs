@@ -30,7 +30,7 @@ public class AuthController : ControllerBase
     {
         try
         {
-            var user = new User { UserName = model.UserName, Email = model.Email };
+            var user = new User { UserName = model.UserName, Email = model.Email};
             var result = await _userManager.CreateAsync(user, model.Password);
 
             if (result.Succeeded)
