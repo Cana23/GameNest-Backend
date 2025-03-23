@@ -1,9 +1,11 @@
-﻿using GameNest_Backend.Data;
-using GameNest_Backend.DTOs;
+﻿using GameNest_Backend.DTOs;
 using GameNest_Backend.Models;
 using Microsoft.EntityFrameworkCore;
+using System;
 using System.Collections.Generic;
-using System.Xml.Linq;
+using System.Linq;
+using System.Threading.Tasks;
+using GameNest_Backend.Controllers;
 
 namespace GameNest_Backend.Service.Services
 {
@@ -11,13 +13,14 @@ namespace GameNest_Backend.Service.Services
     {
         private readonly ApplicationDbContext _context;
         private readonly ILogger<UsersController> _logger;
+
         public FollowersService(ApplicationDbContext context, ILogger<UsersController> logger)
         {
             _context = context;
             _logger = logger;
         }
 
-        public int GetFollowerCount(string userId)
+        public int GetFollowerCount(Guid userId)
         {
             int FollowerCount = 0;
 
@@ -32,20 +35,21 @@ namespace GameNest_Backend.Service.Services
 
             return FollowerCount;
         }
-        public List<Follower> GetFollowers(string userId)
+
+        public List<Follower> GetFollowers(Guid userId)
         {
-            List<Follower> follower = new();
+            List<Follower> followers = new();
 
             try
             {
-                follower = _context.Followers.Where(c => c.UsuarioSeguidoId == userId && c.IsDeleted == false).ToList() ?? throw new Exception();
+                followers = _context.Followers.Where(c => c.UsuarioSeguidoId == userId && c.IsDeleted == false).ToList() ?? throw new Exception();
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, $"Ocurrió un error al obtener los seguidores del usuario {userId}.");
             }
 
-            return follower;
+            return followers;
         }
 
         public async Task<ResponseHelper> Follow(Follower follower)
@@ -54,13 +58,14 @@ namespace GameNest_Backend.Service.Services
 
             try
             {
-                var alreadyFollowed = _context.Followers.Where(c => c.UsuarioSeguidoId == follower.UsuarioSeguidoId && c.UsuarioSeguidorId == follower.UsuarioSeguidorId && c.IsDeleted == false).Any();
+                var alreadyFollowed = _context.Followers.Any(c => c.UsuarioSeguidoId == follower.UsuarioSeguidoId && c.UsuarioSeguidorId == follower.UsuarioSeguidorId && c.IsDeleted == false);
                 var userExists = _context.Users.FirstOrDefault(u => u.Id == follower.UsuarioSeguidoId);
-                
+
                 if (userExists == null)
                 {
                     response.Success = false;
                     response.Message = "Usuario inexistente.";
+                    return response;
                 }
 
                 if (alreadyFollowed)
@@ -83,8 +88,7 @@ namespace GameNest_Backend.Service.Services
             return response;
         }
 
-
-        public async Task<ResponseHelper> UnFollow(string followerId, string followId)
+        public async Task<ResponseHelper> UnFollow(Guid followerId, Guid followId)
         {
             ResponseHelper response = new();
 

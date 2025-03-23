@@ -1,143 +1,109 @@
 ﻿using GameNest_Backend.DTOs;
-using GameNest_Backend.Migrations;
 using GameNest_Backend.Models;
 using GameNest_Backend.Service.Services;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+using System;
 using System.Security.Claims;
+using System.Threading.Tasks;
 
-
-[Route("api/[controller]")]
-[ApiController]
-public class FollowersController : ControllerBase
+namespace GameNest_Backend.Controllers
 {
-    private readonly UserManager<User> _userManager;
-    private readonly ILogger<UsersController> _logger;
-    private readonly IFollowersService _followersService;
-    public FollowersController(
-
-        UserManager<User> userManager,
-        IFollowersService followersService,
-        ILogger<UsersController> logger)
+    [Authorize]
+    [ApiController]
+    [Route("api/[controller]")]
+    public class FollowersController : ControllerBase
     {
-        _userManager = userManager;
-        _followersService = followersService;
-        _logger = logger;
-    }
+        private readonly IFollowersService _followersService;
+        private readonly ILogger<FollowersController> _logger;
 
-    [Authorize(Policy = "AllUsers")]
-    [HttpGet("/api/Followers/{id}")]
-    public async Task<IActionResult> GetAllFollowers(string id)
-    {
-        try
+        public FollowersController(IFollowersService followersService, ILogger<FollowersController> logger)
         {
-            var followers = _followersService.GetFollowers(id);
-            var followerDto = new List<FollowerDTO>();
+            _followersService = followersService;
+            _logger = logger;
+        }
 
-            foreach (var follower in followers)
+        // GET: api/followers/count
+        [HttpGet("count")]
+        public IActionResult GetFollowerCount()
+        {
+            try
             {
-                var user = await _userManager.FindByIdAsync(follower.UsuarioSeguidorId);
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
-                if (user == null)
-                {
-                    continue;
-                }
-
-                followerDto.Add(MapToDto(follower, user.UserName));
+                var followerCount = _followersService.GetFollowerCount(Guid.Parse(userId));
+                return Ok(followerCount);
             }
-
-            return Ok(followerDto);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error obteniendo seguidores.");
-            return StatusCode(500, "Error interno");
-        }
-    }
-
-    [Authorize(Policy = "AllUsers")]
-    [HttpGet("/api/FollowerCount/{id}")]
-    public IActionResult GetFollowerCount(string id)
-    {
-        try
-        {
-            var followerCount = _followersService.GetFollowerCount(id);
-
-            return Ok(followerCount);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error obteniendo cantidad de seguidores.");
-            return StatusCode(500, "Error interno");
-        }
-    }
-
-    [Authorize(Policy = "AllUsers")]
-    [HttpPost("/api/Follow/{id}")]
-    public async Task<IActionResult> Follow(string id)
-    {
-        try
-        {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userId))
-                return Unauthorized("No se pudo obtener el ID del usuario.");
-
-            var follower = new Follower
+            catch (Exception ex)
             {
-                UsuarioSeguidoId = id,
-                UsuarioSeguidorId = userId
-            };
-
-            var result = await _followersService.Follow(follower);
-
-            if (!result.Success)
-                return BadRequest(result.Message);
-
-
-            return Ok(result.Message);
+                _logger.LogError(ex, "Error obteniendo el conteo de seguidores.");
+                return StatusCode(500, "Error interno");
+            }
         }
-        catch (Exception ex)
+
+        // GET: api/followers
+        [HttpGet]
+        public IActionResult GetFollowers()
         {
-            _logger.LogError(ex, "Error creando comentario.");
-            return StatusCode(500, "Error interno");
+            try
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+                var followers = _followersService.GetFollowers(Guid.Parse(userId));
+                return Ok(followers);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error obteniendo los seguidores.");
+                return StatusCode(500, "Error interno");
+            }
         }
-    }
 
-    [Authorize(Policy = "AllUsers")]
-    [HttpDelete("/api/UnFollow/{id}")]
-    public async Task<IActionResult> UnFollow(string id)
-    {
-        try
+        // POST: api/followers
+        [HttpPost]
+        public async Task<IActionResult> Follow([FromBody] Follower follower)
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userId))
-                return Unauthorized("No se pudo obtener el ID del usuario.");
+            try
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
-            var result = await _followersService.UnFollow(userId, id);
+                follower.UsuarioSeguidorId = Guid.Parse(userId);
+                var response = await _followersService.Follow(follower);
 
-            if (!result.Success)
-                return BadRequest(result.Message);
+                if (!response.Success) return BadRequest(response.Message);
 
-            return Ok(result.Message);
+                return Ok(response.Message);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error siguiendo al usuario.");
+                return StatusCode(500, "Error interno");
+            }
         }
-        catch (Exception ex)
+
+        // DELETE: api/followers/{followId}
+        [HttpDelete("{followId}")]
+        public async Task<IActionResult> UnFollow(Guid followId)
         {
-            _logger.LogError(ex, $"Error editando comentario {id}");
-            return StatusCode(500, "Error interno");
+            try
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+                var response = await _followersService.UnFollow(Guid.Parse(userId), followId);
+
+                if (!response.Success) return BadRequest(response.Message);
+
+                return Ok(response.Message);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error dejando de seguir al usuario.");
+                return StatusCode(500, "Error interno");
+            }
         }
-    }
-
-
-    private FollowerDTO MapToDto(Follower follower, string NombreUsuario)
-    {
-        return new FollowerDTO
-        {
-            NombreUsuario = NombreUsuario,
-            UsuarioSeguidoId = follower.UsuarioSeguidoId
-        };
     }
 }
-

@@ -1,4 +1,5 @@
-﻿using GameNest_Backend.DTOs;
+﻿using GameNest_Backend.Controllers;
+using GameNest_Backend.DTOs;
 using GameNest_Backend.Models;
 using GameNest_Backend.Service.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -41,7 +42,8 @@ public class CommentsController : ControllerBase
 
             foreach (var comment in comments)
             {
-                var user = await _userManager.FindByIdAsync(comment.UsuarioId);
+                // Reemplazar la línea que causa el error
+                var user = await _userManager.FindByIdAsync(comment.UsuarioId.ToString());
 
                 if (user == null)
                 {
@@ -72,12 +74,9 @@ public class CommentsController : ControllerBase
 
             foreach (var comment in comments)
             {
-                var user = await _userManager.FindByIdAsync(comment.UsuarioId);
+                var user = await _userManager.FindByIdAsync(comment.UsuarioId.ToString()); // Convertir a string
 
-                if (user == null)
-                {
-                    continue;
-                }
+                if (user == null) continue;
 
                 commentDtos.Add(MapToDto(comment, user.UserName));
             }
@@ -99,12 +98,15 @@ public class CommentsController : ControllerBase
         try
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userId))
-                return Unauthorized("No se pudo obtener el ID del usuario.");
+            if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+            // Convertir userId (string) a Guid
+            if (!Guid.TryParse(userId, out Guid userGuid))
+                return Unauthorized("Formato de ID de usuario inválido");
 
             var comment = new Comment
             {
-                UsuarioId = userId,
+                UsuarioId = userGuid, // Usar Guid
                 Contenido = dto.Contenido,
                 PublicacionId = dto.PublicacionId,
                 FechaComentario = DateTime.UtcNow
@@ -133,19 +135,16 @@ public class CommentsController : ControllerBase
         try
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userId))
-                return Unauthorized("No se pudo obtener el ID del usuario.");
+            if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
+            if (!Guid.TryParse(userId, out Guid userGuid))
+                return Unauthorized("Formato de ID de usuario inválido");
 
             var comment = await _commentsService.GetComment(id);
+            if (comment == null) return NotFound();
 
-            if (comment == null)
-                return NotFound("Comentario no encontrado.");
-
-            if (userId != comment.UsuarioId)
-            {
-                return Unauthorized("No se puede modificar un comentario de otro usuario.");
-            }
+            if (userGuid != comment.UsuarioId) 
+                return Unauthorized("No puedes editar este comentario");
 
             var result = await _commentsService.UpdateComment(dto, comment);
 
@@ -169,18 +168,20 @@ public class CommentsController : ControllerBase
         try
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userId))
-                return Unauthorized("No se pudo obtener el ID del usuario.");
+            if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+
+            if (!Guid.TryParse(userId, out Guid userGuid))
+                return Unauthorized("Formato de ID de usuario inválido");
 
             var comment = await _commentsService.GetComment(id);
+            if (comment == null) return NotFound();
 
-            if (comment == null) return BadRequest("Este comentario no existe.");
-
+            bool isOwner = comment.UsuarioId == userGuid; 
             bool isAdmin = User.IsInRole("Admin");
-            bool isOwner = comment.UsuarioId == userId;
 
             if (!isOwner && !isAdmin)
-                return Unauthorized("No se puede eliminar un comentario de otro usuario.");
+                return Unauthorized("No puedes eliminar este comentario");
 
             var result = await _commentsService.DeleteComment(id);
 

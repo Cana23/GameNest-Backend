@@ -1,8 +1,9 @@
-﻿using GameNest_Backend.Data;
+﻿
 using GameNest_Backend.DTOs;
 using GameNest_Backend.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Xml.Linq;
+using GameNest_Backend.Controllers;
 
 namespace GameNest_Backend.Service.Services
 {

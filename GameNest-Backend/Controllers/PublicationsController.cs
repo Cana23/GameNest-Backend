@@ -1,4 +1,4 @@
-﻿using GameNest_Backend.Data;
+﻿
 using GameNest_Backend.DTOs;
 using GameNest_Backend.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -29,22 +29,29 @@ namespace GameNest_Backend.Controllers
         }
 
         // POST: api/publications
-        [Authorize(Policy = "AllUsers")]
         [HttpPost]
-        public async Task<IActionResult> CreatePublication([FromBody] PublicationCreateDTO dto)
+        [Authorize(Policy = "AllUsers")] 
+        public async Task<IActionResult> CreatePublication([FromBody] PublicationDTO dto)
         {
             try
             {
                 var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                if (userId == null) return Unauthorized();
+
+                if (userId == null || !Guid.TryParse(userId, out Guid userGuid))
+                {
+                    return Unauthorized("Usuario no autenticado");
+                }
+
+                var user = await _userManager.FindByIdAsync(userId);
+                if (user == null) return NotFound("Usuario no existe");
 
                 var publication = new Publication
                 {
-                    UserId = userId,
                     Title = dto.Title,
                     Content = dto.Content,
                     ImageUrl = dto.ImageUrl,
-                    PublicationDate = DateTime.UtcNow
+                    PublicationDate = DateTime.UtcNow,
+                    UserId = userGuid // Asignar el UserId del token
                 };
 
                 _context.Publications.Add(publication);
