@@ -74,7 +74,7 @@ public class CommentsController : ControllerBase
 
             foreach (var comment in comments)
             {
-                var user = await _userManager.FindByIdAsync(comment.UsuarioId.ToString()); // Convertir a string
+                var user = await _userManager.FindByIdAsync(comment.UsuarioId.ToString()); 
 
                 if (user == null) continue;
 
@@ -100,13 +100,13 @@ public class CommentsController : ControllerBase
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
-            // Convertir userId (string) a Guid
+
             if (!Guid.TryParse(userId, out Guid userGuid))
                 return Unauthorized("Formato de ID de usuario inválido");
 
             var comment = new Comment
             {
-                UsuarioId = userGuid, // Usar Guid
+                UsuarioId = Guid.Parse(userId),
                 Contenido = dto.Contenido,
                 PublicacionId = dto.PublicacionId,
                 FechaComentario = DateTime.UtcNow

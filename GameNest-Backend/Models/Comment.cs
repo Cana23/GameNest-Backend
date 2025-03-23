@@ -18,7 +18,6 @@ namespace GameNest_Backend.Models
         public DateTime FechaComentario { get; set; } = DateTime.UtcNow;
         public bool IsDeleted { get; set; } = false;
 
-        // Propiedades de navegación
         public virtual User Usuario { get; set; }
         public virtual Publication Publicacion { get; set; } 
     }

@@ -1,19 +1,22 @@
-﻿using GameNest_Backend.Models;
+﻿using System;
+using System.Collections.Generic;
 
-public class Publication
+namespace GameNest_Backend.Models
 {
-    public int Id { get; set; }
-    public string Title { get; set; }
-    public string Content { get; set; }
-    public string ImageUrl { get; set; }
-    public DateTime PublicationDate { get; set; }
+    public class Publication
+    {
+        public int Id { get; set; }
+        public string Title { get; set; }
+        public string Content { get; set; }
+        public string ImageUrl { get; set; }
+        public DateTime PublicationDate { get; set; }
 
-    // Relación con User
-    public Guid UserId { get; set; }
-    public User User { get; set; }
+        public Guid UserId { get; set; }
+        public string UserName { get; set; } // Nueva propiedad
 
-    // Colección de Likes
-    public ICollection<Like> Likes { get; set; } = new List<Like>(); // <-- Nueva propiedad
+        public User User { get; set; }
 
-    public ICollection<Comment> Comments { get; set; } = new List<Comment>(); // <-- Nueva propiedad
+        public ICollection<Like> Likes { get; set; } = new List<Like>();
+        public ICollection<Comment> Comments { get; set; } = new List<Comment>();
+    }
 }

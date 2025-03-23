@@ -17,7 +17,6 @@ namespace GameNest_Backend.Models
         public DateTime FechaLike { get; set; } = DateTime.UtcNow;
         public bool IsDeleted { get; set; } = false;
 
-
         public virtual User Usuario { get; set; }
         public virtual Publication Publicacion { get; set; }
     }

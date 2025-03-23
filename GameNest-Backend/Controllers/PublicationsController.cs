@@ -1,5 +1,4 @@
-﻿
-using GameNest_Backend.DTOs;
+﻿using GameNest_Backend.DTOs;
 using GameNest_Backend.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -29,29 +28,26 @@ namespace GameNest_Backend.Controllers
         }
 
         // POST: api/publications
+        [Authorize(Policy = "AllUsers")]
         [HttpPost]
-        [Authorize(Policy = "AllUsers")] 
         public async Task<IActionResult> CreatePublication([FromBody] PublicationDTO dto)
         {
             try
             {
                 var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-                if (userId == null || !Guid.TryParse(userId, out Guid userGuid))
-                {
-                    return Unauthorized("Usuario no autenticado");
-                }
+                if (userId == null) return Unauthorized();
 
                 var user = await _userManager.FindByIdAsync(userId);
-                if (user == null) return NotFound("Usuario no existe");
+                if (user == null) return Unauthorized();
 
                 var publication = new Publication
                 {
+                    UserId = Guid.Parse(userId),
+                    UserName = user.UserName,
                     Title = dto.Title,
                     Content = dto.Content,
                     ImageUrl = dto.ImageUrl,
-                    PublicationDate = DateTime.UtcNow,
-                    UserId = userGuid // Asignar el UserId del token
+                    PublicationDate = DateTime.UtcNow
                 };
 
                 _context.Publications.Add(publication);
@@ -71,10 +67,27 @@ namespace GameNest_Backend.Controllers
         [HttpGet("{id}")]
         public async Task<IActionResult> GetPublication(int id)
         {
-            var publication = await _context.Publications.FindAsync(id);
+            var publication = await _context.Publications
+                .Include(p => p.Likes)
+                .Include(p => p.Comments)
+                .FirstOrDefaultAsync(p => p.Id == id);
+
             if (publication == null) return NotFound();
 
-            return Ok(publication);
+            var publicationDTO = new
+            {
+                publication.Id,
+                publication.Title,
+                publication.Content,
+                publication.ImageUrl,
+                publication.PublicationDate,
+                publication.UserId,
+                publication.UserName,
+                TotalLikes = publication.Likes.Count,
+                TotalComments = publication.Comments.Count
+            };
+
+            return Ok(publicationDTO);
         }
     }
 }

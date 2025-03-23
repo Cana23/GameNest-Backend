@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Serilog;
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 
@@ -47,7 +48,7 @@ builder.Services.AddAuthentication(options =>
             Encoding.UTF8.GetBytes(builder.Configuration["JWT:Secret"])),
         RoleClaimType = ClaimTypes.Role,
         NameClaimType = ClaimTypes.NameIdentifier,
-        ClockSkew = TimeSpan.Zero
+        ClockSkew = TimeSpan.Zero,
     };
 });
 
