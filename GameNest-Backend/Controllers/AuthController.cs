@@ -58,7 +58,7 @@ public class AuthController : ControllerBase
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginDTO loginDto)
     {
-        var user = await _userManager.FindByNameAsync(loginDto.UserName);
+        var user = await _userManager.FindByNameAsync(loginDto.Email);
         if (user != null && await _userManager.CheckPasswordAsync(user, loginDto.Password))
         {
             var roles = await _userManager.GetRolesAsync(user);
