@@ -14,15 +14,18 @@ public class AuthController : ControllerBase
     private readonly UserManager<User> _userManager;
     private readonly IConfiguration _config;
     private readonly ILogger<AuthController> _logger;
+    private readonly ApplicationDbContext _context;
 
     public AuthController(
         UserManager<User> userManager,
         IConfiguration config,
-        ILogger<AuthController> logger)
+        ILogger<AuthController> logger,
+        ApplicationDbContext context)
     {
         _userManager = userManager;
         _config = config;
         _logger = logger;
+        _context = context;
     }
 
     [HttpPost("register")]
@@ -55,55 +58,62 @@ public class AuthController : ControllerBase
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginDTO loginDto)
     {
-        _logger.LogInformation($"Intento de login con email: {loginDto.Email}");
-
-        var user = await _userManager.FindByEmailAsync(loginDto.Email);
-        if (user == null)
+        var user = await _userManager.FindByNameAsync(loginDto.UserName);
+        if (user != null && await _userManager.CheckPasswordAsync(user, loginDto.Password))
         {
-            _logger.LogWarning($"Usuario con email {loginDto.Email} no encontrado.");
-            return Unauthorized();
+            var roles = await _userManager.GetRolesAsync(user);
+            var token = GenerateJwtToken(user, roles);
+            return Ok(new { token });
         }
+        return Unauthorized();
+    }
 
-        var passwordValid = await _userManager.CheckPasswordAsync(user, loginDto.Password);
-        if (!passwordValid)
+    [HttpPost("logout")]
+    public async Task<IActionResult> Logout()
+    {
+        try
         {
-            _logger.LogWarning($"Contraseña incorrecta para el usuario con email {loginDto.Email}.");
-            return Unauthorized();
+            var token = Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
+            if (string.IsNullOrEmpty(token)) return BadRequest("Token no proporcionado");
+
+            var revokedToken = new RevokedToken { Token = token };
+            _context.RevokedTokens.Add(revokedToken);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Logout exitoso" });
         }
-
-        var roles = await _userManager.GetRolesAsync(user);
-        var token = GenerateJwtToken(user, roles);
-        _logger.LogInformation($"Login exitoso para el usuario con email {loginDto.Email}.");
-
-        return Ok(new { token });
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error en logout");
+            return StatusCode(500, "Error interno del servidor");
+        }
     }
 
     private string GenerateJwtToken(User user, IList<string> roles)
+    {
+        var claims = new List<Claim>
         {
-            var claims = new List<Claim>
-        {
-            new Claim(JwtRegisteredClaimNames.Sub, user.UserName),
+            new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-            new Claim(ClaimTypes.NameIdentifier, user.Id)
+            new Claim("username", user.UserName),
+            new Claim(ClaimTypes.Email, user.Email)
         };
 
-            // Añadir los roles como claims
-            foreach (var role in roles)
-            {
-                claims.Add(new Claim(ClaimTypes.Role, role));
-            }
-
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["JWT:Secret"]));
-            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
-            var token = new JwtSecurityToken(
-                issuer: _config["JWT:ValidIssuer"],
-                audience: _config["JWT:ValidAudience"],
-                claims: claims,
-                expires: DateTime.Now.AddMinutes(30),
-                signingCredentials: creds);
-
-            return new JwtSecurityTokenHandler().WriteToken(token);
+        foreach (var role in roles)
+        {
+            claims.Add(new Claim(ClaimTypes.Role, role));
         }
-    }
 
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["JWT:Secret"]));
+        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+        var token = new JwtSecurityToken(
+            issuer: _config["JWT:ValidIssuer"],
+            audience: _config["JWT:ValidAudience"],
+            claims: claims,
+            expires: DateTime.Now.AddMinutes(30),
+            signingCredentials: creds);
+
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+}

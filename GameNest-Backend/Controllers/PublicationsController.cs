@@ -1,5 +1,4 @@
-﻿using GameNest_Backend.Data;
-using GameNest_Backend.DTOs;
+﻿using GameNest_Backend.DTOs;
 using GameNest_Backend.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -31,16 +30,20 @@ namespace GameNest_Backend.Controllers
         // POST: api/publications
         [Authorize(Policy = "AllUsers")]
         [HttpPost]
-        public async Task<IActionResult> CreatePublication([FromBody] PublicationCreateDTO dto)
+        public async Task<IActionResult> CreatePublication([FromBody] PublicationDTO dto)
         {
             try
             {
                 var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
                 if (userId == null) return Unauthorized();
 
+                var user = await _userManager.FindByIdAsync(userId);
+                if (user == null) return Unauthorized();
+
                 var publication = new Publication
                 {
-                    UserId = userId,
+                    UserId = Guid.Parse(userId),
+                    UserName = user.UserName,
                     Title = dto.Title,
                     Content = dto.Content,
                     ImageUrl = dto.ImageUrl,
@@ -60,14 +63,43 @@ namespace GameNest_Backend.Controllers
         }
 
         // GET: api/publications/{id}
+
         [Authorize(Policy = "AllUsers")]
         [HttpGet("{id}")]
         public async Task<IActionResult> GetPublication(int id)
         {
-            var publication = await _context.Publications.FindAsync(id);
+            var publication = await _context.Publications
+                .Include(p => p.Likes)
+                .Include(p => p.Comments)
+                .ThenInclude(c => c.Usuario) 
+                .FirstOrDefaultAsync(p => p.Id == id);
+
             if (publication == null) return NotFound();
 
-            return Ok(publication);
+            var commentsDTO = publication.Comments.Select(comment => new CommentResponseDTO
+            {
+                Id = comment.Id,
+                NombreUsuario = comment.Usuario.UserName,  
+                Contenido = comment.Contenido,
+                FechaComentario = comment.FechaComentario
+            }).ToList();
+
+            var publicationDTO = new
+            {
+                publication.Id,
+                publication.Title,
+                publication.Content,
+                publication.ImageUrl,
+                publication.PublicationDate,
+                publication.UserId,
+                publication.UserName,
+                TotalLikes = publication.Likes.Count,
+                TotalComments = publication.Comments.Count,
+                Comments = commentsDTO  
+            };
+
+            return Ok(publicationDTO);
         }
+
     }
 }

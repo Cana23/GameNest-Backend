@@ -1,15 +1,14 @@
 ﻿using GameNest_Backend.DTOs;
 using GameNest_Backend.Models;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
-namespace GameNest_Backend.Service.Services
+namespace GameNest_Backend.Services
 {
     public interface ICommentsService
     {
-        public List<Comment> GetPostComments(int id);
-        public Task<Comment> GetComment(int id);
-        public List<Comment> GetAllComments();
-        public Task<ResponseHelper> CreateComment(Comment comment);
-        public Task<ResponseHelper> UpdateComment(CommentUpdateDTO commentUpdate, Comment comment);
-        public Task<ResponseHelper> DeleteComment(int id);
+        Task<Comment> CreateCommentAsync(CommentCreateDTO dto, Guid userId);
+        Task<CommentResponseDTO> GetCommentByIdAsync(int id);
+        Task<IEnumerable<CommentResponseDTO>> GetCommentsForPublicationAsync(int publicacionId);
     }
 }

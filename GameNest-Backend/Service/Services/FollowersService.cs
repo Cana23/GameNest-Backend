@@ -1,107 +1,101 @@
-﻿using GameNest_Backend.Data;
-using GameNest_Backend.DTOs;
+﻿using GameNest_Backend.DTOs;
 using GameNest_Backend.Models;
 using Microsoft.EntityFrameworkCore;
+using System;
 using System.Collections.Generic;
-using System.Xml.Linq;
+using System.Linq;
+using System.Threading.Tasks;
 
-namespace GameNest_Backend.Service.Services
+public class FollowersService : IFollowersService
 {
-    public class FollowersService : IFollowersService
+    private readonly ApplicationDbContext _context;
+
+    public FollowersService(ApplicationDbContext context)
     {
-        private readonly ApplicationDbContext _context;
-        private readonly ILogger<UsersController> _logger;
-        public FollowersService(ApplicationDbContext context, ILogger<UsersController> logger)
+        _context = context;
+    }
+
+    public int GetFollowerCount(Guid userId)
+    {
+        return _context.Followers.Count(f => f.UsuarioSeguidoId == userId && !f.IsDeleted);
+    }
+
+    // Obtener los seguidores de un usuario
+    public List<FollowerResponseDTO> GetFollowers(Guid userId)
+    {
+        return _context.Followers
+            .Where(f => f.UsuarioSeguidoId == userId && !f.IsDeleted)
+            .Select(f => new FollowerResponseDTO
+            {
+                FollowerId = f.UsuarioSeguidorId,
+                FollowerUsername = f.UsuarioSeguidor.UserName, // Asegúrate de que UserName esté disponible
+                FollowedAt = f.FechaSeguimiento
+            }).ToList();
+    }
+
+    public async Task<ResponseHelper> Follow(FollowerCreateDTO dto)
+    {
+        var response = new ResponseHelper();
+
+        // Verificar si ya está siguiendo
+        var existingFollow = await _context.Followers
+            .FirstOrDefaultAsync(f => f.UsuarioSeguidorId == dto.FollowerId && f.UsuarioSeguidoId == dto.FolloweeId && !f.IsDeleted);
+
+        if (existingFollow != null)
         {
-            _context = context;
-            _logger = logger;
-        }
-
-        public int GetFollowerCount(string userId)
-        {
-            int FollowerCount = 0;
-
-            try
-            {
-                FollowerCount = _context.Followers.Where(c => c.UsuarioSeguidoId == userId && c.IsDeleted == false).Count();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, $"Ocurrió un error al obtener los seguidores del usuario {userId}.");
-            }
-
-            return FollowerCount;
-        }
-        public List<Follower> GetFollowers(string userId)
-        {
-            List<Follower> follower = new();
-
-            try
-            {
-                follower = _context.Followers.Where(c => c.UsuarioSeguidoId == userId && c.IsDeleted == false).ToList() ?? throw new Exception();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, $"Ocurrió un error al obtener los seguidores del usuario {userId}.");
-            }
-
-            return follower;
-        }
-
-        public async Task<ResponseHelper> Follow(Follower follower)
-        {
-            ResponseHelper response = new();
-
-            try
-            {
-                var alreadyFollowed = _context.Followers.Where(c => c.UsuarioSeguidoId == follower.UsuarioSeguidoId && c.UsuarioSeguidorId == follower.UsuarioSeguidorId && c.IsDeleted == false).Any();
-                var userExists = _context.Users.FirstOrDefault(u => u.Id == follower.UsuarioSeguidoId);
-                
-                if (userExists == null)
-                {
-                    response.Success = false;
-                    response.Message = "Usuario inexistente.";
-                }
-
-                if (alreadyFollowed)
-                {
-                    response.Success = true;
-                    response.Message = "Ya se ha seguido a este usuario.";
-                    return response;
-                }
-
-                _context.Followers.Add(follower);
-                response.Success = await _context.SaveChangesAsync() > 0;
-                response.Message = "Siguiendo al usuario.";
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, $"Ocurrió un error al seguir al usuario {follower.UsuarioSeguidoId}.");
-                response.Message = "Ocurrió un error al seguir al usuario. Inténtelo más tarde.";
-            }
-
+            response.Success = false;
+            response.Message = "Ya sigues a este usuario.";
             return response;
         }
 
-
-        public async Task<ResponseHelper> UnFollow(string followerId, string followId)
+        var follow = new Follower
         {
-            ResponseHelper response = new();
+            UsuarioSeguidorId = dto.FollowerId,
+            UsuarioSeguidoId = dto.FolloweeId,
+            FechaSeguimiento = DateTime.UtcNow
+        };
 
-            try
-            {
-                var follow = _context.Followers.FirstOrDefault(f => f.UsuarioSeguidorId == followerId && f.UsuarioSeguidoId == followId && f.IsDeleted == false) ?? throw new Exception();
-                follow.IsDeleted = true;
+        _context.Followers.Add(follow);
+        await _context.SaveChangesAsync();
 
-                response.Success = await _context.SaveChangesAsync() > 0;
-                response.Message = "Se ha dejado de seguir correctamente.";
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, $"Ocurrió un error al dejar de seguir al usuario {followerId}.");
-                response.Message = "Ocurrió un error al dejar de seguir al usuario. Inténtelo más tarde.";
-            }
+        response.Success = true;
+        response.Message = "Seguiste exitosamente.";
+        return response;
+    }
+
+    // Dejar de seguir a un usuario
+    public async Task<ResponseHelper> UnFollow(Guid followerId, Guid followeeId)
+    {
+        var response = new ResponseHelper();
+
+        var follow = await _context.Followers
+            .FirstOrDefaultAsync(f => f.UsuarioSeguidorId == followerId && f.UsuarioSeguidoId == followeeId && !f.IsDeleted);
+
+        if (follow == null)
+        {
+            response.Success = false;
+            response.Message = "No estás siguiendo a este usuario.";
             return response;
         }
+
+        // Marcar como eliminado en lugar de eliminar físicamente
+        follow.IsDeleted = true;
+        await _context.SaveChangesAsync();
+
+        response.Success = true;
+        response.Message = "Dejaste de seguir a este usuario.";
+        return response;
+    }
+
+    // Buscar usuarios
+    public List<UserSearchDTO> SearchUsers(string query)
+    {
+        return _context.Users
+            .Where(u => u.UserName.Contains(query)) // Filtra por nombre de usuario
+            .Select(u => new UserSearchDTO
+            {
+                UserId = u.Id,
+                UserName = u.UserName
+            }).ToList();
     }
 }
