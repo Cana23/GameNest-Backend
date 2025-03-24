@@ -1,60 +1,86 @@
-﻿namespace GameNest_Backend.Data;
-using GameNest_Backend.Models;
+﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using GameNest_Backend.Models;
+using Microsoft.AspNetCore.Identity;
+using System;
 
-
-public class ApplicationDbContext : IdentityDbContext<User>
+public class ApplicationDbContext : IdentityDbContext<
+    User,
+    IdentityRole<Guid>, // Tipo de Role
+    Guid, // Tipo de clave primaria (TKey)
+    IdentityUserClaim<Guid>, // Tipo de UserClaim
+    IdentityUserRole<Guid>, // Tipo de UserRole
+    IdentityUserLogin<Guid>, // Tipo de UserLogin
+    IdentityRoleClaim<Guid>, // Tipo de RoleClaim
+    IdentityUserToken<Guid> // Tipo de UserToken
+>
 {
-    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
-        : base(options) { }
-
+    public DbSet<Publication> Publications { get; set; }
     public DbSet<Comment> Comments { get; set; }
     public DbSet<Follower> Followers { get; set; }
     public DbSet<Like> Likes { get; set; }
+    public DbSet<RevokedToken> RevokedTokens { get; set; } 
+
+
+    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+        : base(options) { }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
+        // Configuración de Comment
         modelBuilder.Entity<Comment>()
-            .HasOne(c => c.Usuario)  // Usar la propiedad de navegación User
-            .WithMany()  // No necesitas una colección en User para los comentarios
+            .HasOne(c => c.Usuario)
+            .WithMany(u => u.Comments)
             .HasForeignKey(c => c.UsuarioId)
-            .OnDelete(DeleteBehavior.Restrict);  // Evita eliminación en cascada
+            .OnDelete(DeleteBehavior.Restrict);
 
+        modelBuilder.Entity<Comment>()
+            .HasOne(c => c.Publicacion)
+            .WithMany(p => p.Comments)
+            .HasForeignKey(c => c.PublicacionId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Configuración de Follower
         modelBuilder.Entity<Follower>()
             .HasOne(f => f.UsuarioSeguidor)
-            .WithMany()
+            .WithMany(u => u.Siguiendo)
             .HasForeignKey(f => f.UsuarioSeguidorId)
             .OnDelete(DeleteBehavior.Restrict);
 
         modelBuilder.Entity<Follower>()
             .HasOne(f => f.UsuarioSeguido)
-            .WithMany()
+            .WithMany(u => u.Seguidores)
             .HasForeignKey(f => f.UsuarioSeguidoId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // Añadir índice único para evitar que un usuario siga a otro más de una vez
         modelBuilder.Entity<Follower>()
             .HasIndex(f => new { f.UsuarioSeguidorId, f.UsuarioSeguidoId })
             .IsUnique();
 
+        // Configuración de Like
         modelBuilder.Entity<Like>()
             .HasOne(l => l.Usuario)
-            .WithMany()
-            .HasForeignKey(f => f.UsuarioId)
+            .WithMany(u => u.Likes)
+            .HasForeignKey(l => l.UsuarioId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        //modelBuilder.Entity<Like>()
-        //    .HasOne(l => l.PublicacionId)
-        //    .WithMany()
-        //    .HasForeignKey(f => f.PublicacionId)
-        //    .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<Like>()
+            .HasOne(l => l.Publicacion)
+            .WithMany(p => p.Likes)
+            .HasForeignKey(l => l.PublicacionId)
+            .OnDelete(DeleteBehavior.Restrict);
 
-        //modelBuilder.Entity<Like>()
-        //.HasIndex(f => new { f.UsuarioId, f.PublicacionId })
-        //.IsUnique();
+        // Índice único para evitar likes duplicados
+        modelBuilder.Entity<Like>()
+            .HasIndex(l => new { l.UsuarioId, l.PublicacionId })
+            .IsUnique();
+
+        // Configuración de Publication
+        modelBuilder.Entity<Publication>()
+            .HasOne(p => p.User)
+            .WithMany(u => u.Publications)
+            .HasForeignKey(p => p.UserId);
     }
-
-
 }

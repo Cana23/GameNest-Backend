@@ -8,19 +8,18 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
-
 [Route("api/[controller]")]
 [ApiController]
 public class LikesController : ControllerBase
 {
     private readonly UserManager<User> _userManager;
-    private readonly ILogger<UsersController> _logger;
+    private readonly ILogger<LikesController> _logger;
     private readonly ILikesService _likesService;
-    public LikesController(
 
+    public LikesController(
         UserManager<User> userManager,
         ILikesService likesService,
-        ILogger<UsersController> logger)
+        ILogger<LikesController> logger)
     {
         _userManager = userManager;
         _likesService = likesService;
@@ -34,7 +33,6 @@ public class LikesController : ControllerBase
         try
         {
             var likes = _likesService.GetPostLikes(id);
-
             return Ok(likes);
         }
         catch (Exception ex)
@@ -56,7 +54,7 @@ public class LikesController : ControllerBase
 
             var like = new Like
             {
-                UsuarioId = userId,
+                UsuarioId = Guid.Parse(userId),
                 PublicacionId = id,
             };
 
@@ -64,7 +62,6 @@ public class LikesController : ControllerBase
 
             if (!result.Success)
                 return BadRequest(result.Message);
-
 
             return Ok(result.Message);
         }
@@ -87,10 +84,10 @@ public class LikesController : ControllerBase
 
             var like = await _likesService.GetLike(id);
 
-            if (like == null) return BadRequest("esta publicación no existe.");
+            if (like == null) return BadRequest("Esta publicación no existe.");
 
             bool isAdmin = User.IsInRole("Admin");
-            bool isOwner = like.UsuarioId == userId;
+            bool isOwner = like.UsuarioId == Guid.Parse(userId);
 
             if (!isOwner && !isAdmin)
                 return Unauthorized("No se puede eliminar un like de otro usuario.");
@@ -108,4 +105,3 @@ public class LikesController : ControllerBase
         }
     }
 }
-

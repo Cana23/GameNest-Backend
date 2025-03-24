@@ -1,11 +1,12 @@
 ﻿using System.ComponentModel.DataAnnotations;
-namespace GameNest_Backend.DTOs
 
+namespace GameNest_Backend.DTOs
 {
     public class CommentCreateDTO
     {
         [Required]
-        public int PublicacionId { get; set; }
+        public int PublicacionId { get; set; } // No necesitas UsuarioId aquí
+
         [Required]
         [StringLength(100, MinimumLength = 1)]
         public string Contenido { get; set; }
@@ -14,9 +15,8 @@ namespace GameNest_Backend.DTOs
     public class CommentUpdateDTO
     {
         [StringLength(100, MinimumLength = 1)]
-        public required string Contenido { get; set; }
+        public string Contenido { get; set; } // Se puede quitar 'required' si no es obligatorio
     }
-
 
     public class CommentResponseDTO
     {
@@ -25,5 +25,4 @@ namespace GameNest_Backend.DTOs
         public string Contenido { get; set; }
         public DateTime FechaComentario { get; set; }
     }
-
 }

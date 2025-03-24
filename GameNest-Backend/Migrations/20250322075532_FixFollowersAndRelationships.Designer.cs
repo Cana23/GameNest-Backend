@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace GameNest_Backend.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250322075532_FixFollowersAndRelationships")]
+    partial class FixFollowersAndRelationships
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -62,9 +65,6 @@ namespace GameNest_Backend.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<DateTime>("FechaSeguimiento")
-                        .HasColumnType("datetime2");
-
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
@@ -112,63 +112,6 @@ namespace GameNest_Backend.Migrations
                         .IsUnique();
 
                     b.ToTable("Likes");
-                });
-
-            modelBuilder.Entity("GameNest_Backend.Models.Publication", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Content")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ImageUrl")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("PublicationDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("UserName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("Publications");
-                });
-
-            modelBuilder.Entity("GameNest_Backend.Models.RevokedToken", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("RevokedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Token")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("RevokedTokens");
                 });
 
             modelBuilder.Entity("GameNest_Backend.Models.User", b =>
@@ -371,9 +314,42 @@ namespace GameNest_Backend.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("Publication", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ImageUrl")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("PublicationDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Publications");
+                });
+
             modelBuilder.Entity("GameNest_Backend.Models.Comment", b =>
                 {
-                    b.HasOne("GameNest_Backend.Models.Publication", "Publicacion")
+                    b.HasOne("Publication", "Publicacion")
                         .WithMany("Comments")
                         .HasForeignKey("PublicacionId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -411,7 +387,7 @@ namespace GameNest_Backend.Migrations
 
             modelBuilder.Entity("GameNest_Backend.Models.Like", b =>
                 {
-                    b.HasOne("GameNest_Backend.Models.Publication", "Publicacion")
+                    b.HasOne("Publication", "Publicacion")
                         .WithMany("Likes")
                         .HasForeignKey("PublicacionId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -426,17 +402,6 @@ namespace GameNest_Backend.Migrations
                     b.Navigation("Publicacion");
 
                     b.Navigation("Usuario");
-                });
-
-            modelBuilder.Entity("GameNest_Backend.Models.Publication", b =>
-                {
-                    b.HasOne("GameNest_Backend.Models.User", "User")
-                        .WithMany("Publications")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
@@ -490,11 +455,15 @@ namespace GameNest_Backend.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("GameNest_Backend.Models.Publication", b =>
+            modelBuilder.Entity("Publication", b =>
                 {
-                    b.Navigation("Comments");
+                    b.HasOne("GameNest_Backend.Models.User", "User")
+                        .WithMany("Publications")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
-                    b.Navigation("Likes");
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("GameNest_Backend.Models.User", b =>
@@ -508,6 +477,13 @@ namespace GameNest_Backend.Migrations
                     b.Navigation("Seguidores");
 
                     b.Navigation("Siguiendo");
+                });
+
+            modelBuilder.Entity("Publication", b =>
+                {
+                    b.Navigation("Comments");
+
+                    b.Navigation("Likes");
                 });
 #pragma warning restore 612, 618
         }

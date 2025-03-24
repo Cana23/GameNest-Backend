@@ -14,15 +14,18 @@ public class AuthController : ControllerBase
     private readonly UserManager<User> _userManager;
     private readonly IConfiguration _config;
     private readonly ILogger<AuthController> _logger;
+    private readonly ApplicationDbContext _context;
 
     public AuthController(
         UserManager<User> userManager,
         IConfiguration config,
-        ILogger<AuthController> logger)
+        ILogger<AuthController> logger,
+        ApplicationDbContext context)
     {
         _userManager = userManager;
         _config = config;
         _logger = logger;
+        _context = context;
     }
 
     [HttpPost("register")]
@@ -62,13 +65,35 @@ public class AuthController : ControllerBase
         return Unauthorized();
     }
 
+    [HttpPost("logout")]
+    public async Task<IActionResult> Logout()
+    {
+        try
+        {
+            var token = Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
+            if (string.IsNullOrEmpty(token)) return BadRequest("Token no proporcionado");
+
+            var revokedToken = new RevokedToken { Token = token };
+            _context.RevokedTokens.Add(revokedToken);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Logout exitoso" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error en logout");
+            return StatusCode(500, "Error interno del servidor");
+        }
+    }
+
     private string GenerateJwtToken(User user, IList<string> roles)
     {
         var claims = new List<Claim>
         {
-            new Claim("UserName", user.UserName),
+            new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString())
+            new Claim("username", user.UserName),
+            new Claim(ClaimTypes.Email, user.Email)
         };
 
         foreach (var role in roles)

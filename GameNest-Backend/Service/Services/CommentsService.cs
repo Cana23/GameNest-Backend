@@ -1,129 +1,75 @@
-﻿using GameNest_Backend.Data;
-using GameNest_Backend.DTOs;
+﻿using GameNest_Backend.DTOs;
 using GameNest_Backend.Models;
+using GameNest_Backend.Service.Services;
 using Microsoft.EntityFrameworkCore;
-using System.Xml.Linq;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
-namespace GameNest_Backend.Service.Services
+namespace GameNest_Backend.Services
 {
-    public class CommentsService : ICommentsService
+    public class CommentService : ICommentsService
     {
         private readonly ApplicationDbContext _context;
-        private readonly ILogger<UsersController> _logger;
-        public CommentsService(ApplicationDbContext context, ILogger<UsersController> logger)
+
+        public CommentService(ApplicationDbContext context)
         {
             _context = context;
-            _logger = logger;
         }
 
-        public List<Comment> GetPostComments(int id)
+        // Crear un comentario
+        public async Task<Comment> CreateCommentAsync(CommentCreateDTO dto, Guid userId)
         {
-            List<Comment> comments = new();
+            var comment = new Comment
+            {
+                PublicacionId = dto.PublicacionId,
+                UsuarioId = userId,
+                Contenido = dto.Contenido,
+                FechaComentario = DateTime.UtcNow
+            };
 
-            try
-            {
-                comments = _context.Comments.Where(c => c.PublicacionId == id && c.IsDeleted == false).ToList();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, $"Ocurrió un error al obtener los comentarios del post {id}.");
-            }
-
-            return comments;
-        }
-        public async Task<Comment> GetComment(int id)
-        {
-            Comment comment = new();
-
-            try
-            {
-                comment = await _context.Comments.FirstOrDefaultAsync(c => c.Id == id && c.IsDeleted == false) ?? throw new Exception();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, $"Ocurrió un error al obtener los comentarios del post {id}.");
-            }
+            _context.Comments.Add(comment);
+            await _context.SaveChangesAsync();
 
             return comment;
         }
 
-        public List<Comment> GetAllComments()
+        // Obtener un comentario por ID
+        public async Task<CommentResponseDTO> GetCommentByIdAsync(int id)
         {
-            List<Comment> comments = new();
-            try
+            var comment = await _context.Comments
+                .Include(c => c.Publicacion)
+                .Include(c => c.Usuario)
+                .FirstOrDefaultAsync(c => c.Id == id);
+
+            if (comment == null) return null;
+
+            return new CommentResponseDTO
             {
-                comments = _context.Comments.ToList();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, $"Ocurrió un error al obtener todos los comentarios.");
-            }
+                Id = comment.Id,
+                NombreUsuario = comment.Usuario.UserName,
+                Contenido = comment.Contenido,
+                FechaComentario = comment.FechaComentario
+            };
+        }
+
+        // Obtener comentarios por publicación
+        public async Task<IEnumerable<CommentResponseDTO>> GetCommentsForPublicationAsync(int publicacionId)
+        {
+            var comments = await _context.Comments
+                .Where(c => c.PublicacionId == publicacionId)
+                .Include(c => c.Usuario)
+                .Select(c => new CommentResponseDTO
+                {
+                    Id = c.Id,
+                    NombreUsuario = c.Usuario.UserName,
+                    Contenido = c.Contenido,
+                    FechaComentario = c.FechaComentario
+                })
+                .ToListAsync();
 
             return comments;
-        }
-
-        public async Task<ResponseHelper> CreateComment(Comment comment)
-        {
-            ResponseHelper response = new();
-
-            try
-            {
-                _context.Comments.Add(comment);
-                response.Success = await _context.SaveChangesAsync() > 0;
-                response.Message = "Comentario creado correctamente.";
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, $"Ocurrió un error al crear el comentario {comment}.");
-                response.Message = "Ocurrió un error al crear el comentario. Inténtelo más tarde.";
-            }
-
-            return response;
-        }
-
-        public async Task<ResponseHelper> UpdateComment(CommentUpdateDTO commentUpdate, Comment comment)
-        {
-            ResponseHelper response = new();
-
-            try
-            {
-                comment.Contenido = commentUpdate.Contenido;
-                response.Success = await _context.SaveChangesAsync() > 0;
-                response.Message = "Comentario editado correctamente.";
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, $"Ocurrió un error al editar el comentario {comment}.");
-                response.Message = "Ocurrió un error al editar el comentario. Inténtelo más tarde.";
-            }
-            return response;
-        }
-
-        public async Task<ResponseHelper> DeleteComment(int id)
-        {
-            ResponseHelper response = new();
-
-            try
-            {
-                var comment = _context.Comments.FirstOrDefault(c => c.Id == id && c.IsDeleted == false);
-
-                if (comment == null)
-                {
-                    response.Message = "Comentario no encontrado o borrado.";
-                    return response;
-                }
-
-                comment.IsDeleted = true;
-
-                response.Success = await _context.SaveChangesAsync() > 0;
-                response.Message = "Comentario borrado correctamente.";
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, $"Ocurrió un error al eliminar el comentario {id}.");
-                response.Message = "Ocurrió un error al eliminar el comentario. Inténtelo más tarde.";
-            }
-            return response;
         }
     }
 }
