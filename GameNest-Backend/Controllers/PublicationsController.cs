@@ -63,6 +63,7 @@ namespace GameNest_Backend.Controllers
         }
 
         // GET: api/publications/{id}
+
         [Authorize(Policy = "AllUsers")]
         [HttpGet("{id}")]
         public async Task<IActionResult> GetPublication(int id)
@@ -70,9 +71,18 @@ namespace GameNest_Backend.Controllers
             var publication = await _context.Publications
                 .Include(p => p.Likes)
                 .Include(p => p.Comments)
+                .ThenInclude(c => c.Usuario) 
                 .FirstOrDefaultAsync(p => p.Id == id);
 
             if (publication == null) return NotFound();
+
+            var commentsDTO = publication.Comments.Select(comment => new CommentResponseDTO
+            {
+                Id = comment.Id,
+                NombreUsuario = comment.Usuario.UserName,  
+                Contenido = comment.Contenido,
+                FechaComentario = comment.FechaComentario
+            }).ToList();
 
             var publicationDTO = new
             {
@@ -84,10 +94,12 @@ namespace GameNest_Backend.Controllers
                 publication.UserId,
                 publication.UserName,
                 TotalLikes = publication.Likes.Count,
-                TotalComments = publication.Comments.Count
+                TotalComments = publication.Comments.Count,
+                Comments = commentsDTO  
             };
 
             return Ok(publicationDTO);
         }
+
     }
 }

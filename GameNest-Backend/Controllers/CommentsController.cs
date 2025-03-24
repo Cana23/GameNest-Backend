@@ -1,210 +1,60 @@
-﻿using GameNest_Backend.Controllers;
-using GameNest_Backend.DTOs;
+﻿using GameNest_Backend.DTOs;
 using GameNest_Backend.Models;
-using GameNest_Backend.Service.Services;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using System.Threading.Tasks;
+using GameNest_Backend.Services;
 
 
-[Route("api/[controller]")]
-[ApiController]
-public class CommentsController : ControllerBase
+namespace GameNest_Backend.Controllers
 {
-    private readonly UserManager<User> _userManager;
-    private readonly RoleManager<IdentityRole> _roleManager;
-    private readonly ILogger<UsersController> _logger;
-    private readonly ICommentsService _commentsService;
-    public CommentsController(
-
-        UserManager<User> userManager,
-        RoleManager<IdentityRole> roleManager,
-        ICommentsService commentsService,
-        ILogger<UsersController> logger)
+    namespace GameNest_Backend.Controllers
     {
-        _userManager = userManager;
-        _roleManager = roleManager;
-        _commentsService = commentsService;
-        _logger = logger;
-    }
-    // GET: api/Comments
-    [Authorize(Policy = "AdminOnly")]
-    [HttpGet]
-    public async Task<IActionResult> GetAllComments()
-    {
-        try
+        [Authorize]
+        [ApiController]
+        [Route("api/[controller]")]
+        public class CommentsController : ControllerBase
         {
-            var comments = _commentsService.GetAllComments();
-            var commentDtos = new List<CommentResponseDTO>();
+            private readonly ICommentsService _commentService;
 
-            foreach (var comment in comments)
+            public CommentsController(ICommentsService commentService)
             {
-                // Reemplazar la línea que causa el error
-                var user = await _userManager.FindByIdAsync(comment.UsuarioId.ToString());
+                _commentService = commentService;
+            }
 
-                if (user == null)
+            // POST: api/comments
+            [HttpPost]
+            public async Task<IActionResult> CreateComment([FromBody] CommentCreateDTO dto)
+            {
+                try
                 {
-                    continue;
+                    // Obtener el UserId del Claim
+                    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                    if (userId == null) return Unauthorized();
+
+                    var comment = await _commentService.CreateCommentAsync(dto, Guid.Parse(userId));
+
+                    // Retorna la respuesta de creación
+                    return CreatedAtAction(nameof(GetComment), new { id = comment.Id }, comment);
                 }
-
-                commentDtos.Add(MapToDto(comment, user.UserName));
+                catch (Exception ex)
+                {
+                    return StatusCode(500, "Error interno");
+                }
             }
 
-            return Ok(commentDtos);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error obteniendo comentarios.");
-            return StatusCode(500, "Error interno");
-        }
-    }
-
-    // GET: api/Comments/{PostId}
-    [Authorize(Policy = "AllUsers")]
-    [HttpGet("{id}")]
-    public async Task<IActionResult> GetPostComments(int id)
-    {
-        try
-        {
-            var comments = _commentsService.GetPostComments(id);
-            var commentDtos = new List<CommentResponseDTO>();
-
-            foreach (var comment in comments)
+            // GET: api/comments/{id}
+            [HttpGet("{id}")]
+            public async Task<IActionResult> GetComment(int id)
             {
-                var user = await _userManager.FindByIdAsync(comment.UsuarioId.ToString()); 
+                var comment = await _commentService.GetCommentByIdAsync(id);
+                if (comment == null) return NotFound();
 
-                if (user == null) continue;
-
-                commentDtos.Add(MapToDto(comment, user.UserName));
+                return Ok(comment);
             }
-
-            return Ok(commentDtos);
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error obteniendo comentarios.");
-            return StatusCode(500, "Error interno");
-        }
-    }
-
-    // POST: api/Comments
-    [Authorize(Policy = "AllUsers")]
-    [HttpPost]
-    public async Task<IActionResult> CreateComment([FromBody] CommentCreateDTO dto)
-    {
-        try
-        {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userId)) return Unauthorized();
-
-
-            if (!Guid.TryParse(userId, out Guid userGuid))
-                return Unauthorized("Formato de ID de usuario inválido");
-
-            var comment = new Comment
-            {
-                UsuarioId = Guid.Parse(userId),
-                Contenido = dto.Contenido,
-                PublicacionId = dto.PublicacionId,
-                FechaComentario = DateTime.UtcNow
-            };
-
-            var result = await _commentsService.CreateComment(comment);
-
-            if (!result.Success)
-                return BadRequest(result.Message);
-
-
-            return Ok(result.Message);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error creando comentario.");
-            return StatusCode(500, "Error interno");
-        }
-    }
-
-    // PUT: api/Comments/{CommentDTO}
-    [Authorize(Policy = "AllUsers")]
-    [HttpPut("{id}")]
-    public async Task<IActionResult> UpdateComment(int id, [FromBody] CommentUpdateDTO dto)
-    {
-        try
-        {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userId)) return Unauthorized();
-
-            if (!Guid.TryParse(userId, out Guid userGuid))
-                return Unauthorized("Formato de ID de usuario inválido");
-
-            var comment = await _commentsService.GetComment(id);
-            if (comment == null) return NotFound();
-
-            if (userGuid != comment.UsuarioId) 
-                return Unauthorized("No puedes editar este comentario");
-
-            var result = await _commentsService.UpdateComment(dto, comment);
-
-            if (!result.Success)
-                return BadRequest(result.Message);
-
-            return Ok(result.Message);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, $"Error editando comentario {id}");
-            return StatusCode(500, "Error interno");
-        }
-    }
-
-    // DELETE: api/Comments/{CommentId}    
-    [Authorize(Policy = "AllUsers")]
-    [HttpDelete("{id}")]
-    public async Task<IActionResult> DeleteComment(int id)
-    {
-        try
-        {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userId)) return Unauthorized();
-
-
-            if (!Guid.TryParse(userId, out Guid userGuid))
-                return Unauthorized("Formato de ID de usuario inválido");
-
-            var comment = await _commentsService.GetComment(id);
-            if (comment == null) return NotFound();
-
-            bool isOwner = comment.UsuarioId == userGuid; 
-            bool isAdmin = User.IsInRole("Admin");
-
-            if (!isOwner && !isAdmin)
-                return Unauthorized("No puedes eliminar este comentario");
-
-            var result = await _commentsService.DeleteComment(id);
-
-            if (!result.Success) return StatusCode(500, result.Message);
-
-            return Ok(result.Message);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, $"Error eliminando comentario {id}");
-            return StatusCode(500, "Error interno");
-        }
-    }
-
-    private CommentResponseDTO MapToDto(Comment comment, string NombreUsuario)
-    {
-        return new CommentResponseDTO
-        {
-            Id = comment.Id,
-            NombreUsuario = NombreUsuario,
-            Contenido = comment.Contenido,
-            FechaComentario = comment.FechaComentario,
-        };
     }
 }
-

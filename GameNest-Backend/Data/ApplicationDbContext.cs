@@ -19,7 +19,7 @@ public class ApplicationDbContext : IdentityDbContext<
     public DbSet<Comment> Comments { get; set; }
     public DbSet<Follower> Followers { get; set; }
     public DbSet<Like> Likes { get; set; }
-    public DbSet<RevokedToken> RevokedTokens { get; set; } // Agregar DbSet para RevokedToken
+    public DbSet<RevokedToken> RevokedTokens { get; set; } 
 
 
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)

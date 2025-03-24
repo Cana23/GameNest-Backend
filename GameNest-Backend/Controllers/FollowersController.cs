@@ -3,6 +3,7 @@ using GameNest_Backend.Models;
 using GameNest_Backend.Service.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Security.Claims;
 using System.Threading.Tasks;
@@ -63,15 +64,15 @@ namespace GameNest_Backend.Controllers
 
         // POST: api/followers
         [HttpPost]
-        public async Task<IActionResult> Follow([FromBody] Follower follower)
+        public async Task<IActionResult> Follow([FromBody] FollowerCreateDTO dto)
         {
             try
             {
-                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                if (string.IsNullOrEmpty(userId)) return Unauthorized();
+                var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+                if (userId == dto.FolloweeId) return BadRequest("No puedes seguirte a ti mismo.");
 
-                follower.UsuarioSeguidorId = Guid.Parse(userId);
-                var response = await _followersService.Follow(follower);
+                dto.FollowerId = userId;
+                var response = await _followersService.Follow(dto);
 
                 if (!response.Success) return BadRequest(response.Message);
 
@@ -90,10 +91,9 @@ namespace GameNest_Backend.Controllers
         {
             try
             {
-                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                if (string.IsNullOrEmpty(userId)) return Unauthorized();
+                var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
 
-                var response = await _followersService.UnFollow(Guid.Parse(userId), followId);
+                var response = await _followersService.UnFollow(userId, followId);
 
                 if (!response.Success) return BadRequest(response.Message);
 
@@ -102,6 +102,24 @@ namespace GameNest_Backend.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error dejando de seguir al usuario.");
+                return StatusCode(500, "Error interno");
+            }
+        }
+
+        // GET: api/followers/search?query={query}
+        [HttpGet("search")]
+        public IActionResult SearchUsers([FromQuery] string query)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(query)) return BadRequest("La búsqueda no puede estar vacía.");
+
+                var users = _followersService.SearchUsers(query);
+                return Ok(users);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error buscando usuarios.");
                 return StatusCode(500, "Error interno");
             }
         }

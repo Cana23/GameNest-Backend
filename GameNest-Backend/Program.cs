@@ -1,6 +1,7 @@
 
 using GameNest_Backend.Models;
 using GameNest_Backend.Service.Services;
+using GameNest_Backend.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -24,7 +25,7 @@ builder.Services.AddIdentity<User, IdentityRole<Guid>>()
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
 
-builder.Services.AddTransient<ICommentsService, CommentsService>();
+builder.Services.AddTransient<ICommentsService, CommentService>();
 builder.Services.AddTransient<IFollowersService, FollowersService>();
 builder.Services.AddTransient<ILikesService, LikesService>();
 
@@ -48,9 +49,29 @@ builder.Services.AddAuthentication(options =>
             Encoding.UTF8.GetBytes(builder.Configuration["JWT:Secret"])),
         RoleClaimType = ClaimTypes.Role,
         NameClaimType = ClaimTypes.NameIdentifier,
-        ClockSkew = TimeSpan.Zero,
+        ClockSkew = TimeSpan.Zero
+    };
+
+ 
+    options.Events = new JwtBearerEvents
+    {
+        OnTokenValidated = async context =>
+        {
+            var dbContext = context.HttpContext.RequestServices.GetRequiredService<ApplicationDbContext>();
+            var token = context.SecurityToken as JwtSecurityToken;
+            if (token != null)
+            {
+                var tokenRevoked = await dbContext.RevokedTokens
+                    .AnyAsync(rt => rt.Token == token.RawData);
+                if (tokenRevoked)
+                {
+                    context.Fail("Este token ha sido revocado.");
+                }
+            }
+        }
     };
 });
+
 
 builder.Services.AddAuthorization(options =>
 {
@@ -168,6 +189,17 @@ using (var scope = app.Services.CreateScope())
         logger.LogError(ex, "Error inicializando roles y usuarios");
     }
 }
+
+
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+    await dbContext.RevokedTokens
+        .Where(rt => rt.RevokedAt < DateTime.UtcNow.AddDays(-30))
+        .ExecuteDeleteAsync();
+}
+
 
 app.UseSwagger();
 app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Auth API v1"));
