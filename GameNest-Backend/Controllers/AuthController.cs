@@ -78,7 +78,7 @@ public class AuthController : ControllerBase
         var token = GenerateJwtToken(user, roles);
         _logger.LogInformation($"Login exitoso para el usuario con email {loginDto.Email}.");
 
-        return Ok(new { token });
+        return Ok(new { token, user });
 
         //var user = await _userManager.FindByNameAsync(loginDto.Email);
         //if (user != null && await _userManager.CheckPasswordAsync(user, loginDto.Password))
