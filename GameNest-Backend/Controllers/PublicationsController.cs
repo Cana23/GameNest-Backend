@@ -107,6 +107,9 @@ namespace GameNest_Backend.Controllers
         {
             try
             {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (userId == null) return Unauthorized();
+
                 var publications = await _context.Publications
                     .Include(p => p.Likes)
                     .Include(p => p.Comments)
@@ -130,7 +133,8 @@ namespace GameNest_Backend.Controllers
                         NombreUsuario = comment.Usuario.UserName,
                         Contenido = comment.Contenido,
                         FechaComentario = comment.FechaComentario
-                    }).ToList()
+                    }).ToList(),
+                    hasLiked = publication.Likes.Where(l => l.UsuarioId == Guid.Parse(userId) && l.IsDeleted == false).Any()
                 }).ToList();
 
                 return Ok(publicationsDTO);
