@@ -63,7 +63,6 @@ namespace GameNest_Backend.Controllers
         }
 
         // GET: api/publications/{id}
-
         [Authorize(Policy = "AllUsers")]
         [HttpGet("{id}")]
         public async Task<IActionResult> GetPublication(int id)
@@ -71,7 +70,7 @@ namespace GameNest_Backend.Controllers
             var publication = await _context.Publications
                 .Include(p => p.Likes)
                 .Include(p => p.Comments)
-                .ThenInclude(c => c.Usuario) 
+                .ThenInclude(c => c.Usuario)
                 .FirstOrDefaultAsync(p => p.Id == id);
 
             if (publication == null) return NotFound();
@@ -79,7 +78,7 @@ namespace GameNest_Backend.Controllers
             var commentsDTO = publication.Comments.Select(comment => new CommentResponseDTO
             {
                 Id = comment.Id,
-                NombreUsuario = comment.Usuario.UserName,  
+                NombreUsuario = comment.Usuario.UserName,
                 Contenido = comment.Contenido,
                 FechaComentario = comment.FechaComentario
             }).ToList();
@@ -95,11 +94,52 @@ namespace GameNest_Backend.Controllers
                 publication.UserName,
                 TotalLikes = publication.Likes.Count,
                 TotalComments = publication.Comments.Count,
-                Comments = commentsDTO  
+                Comments = commentsDTO
             };
 
             return Ok(publicationDTO);
         }
 
+        // GET: api/publications
+        [Authorize(Policy = "AllUsers")]
+        [HttpGet]
+        public async Task<IActionResult> GetAllPublications()
+        {
+            try
+            {
+                var publications = await _context.Publications
+                    .Include(p => p.Likes)
+                    .Include(p => p.Comments)
+                    .ThenInclude(c => c.Usuario)
+                    .ToListAsync();
+
+                var publicationsDTO = publications.Select(publication => new
+                {
+                    publication.Id,
+                    publication.Title,
+                    publication.Content,
+                    publication.ImageUrl,
+                    publication.PublicationDate,
+                    publication.UserId,
+                    publication.UserName,
+                    TotalLikes = publication.Likes.Count,
+                    TotalComments = publication.Comments.Count,
+                    Comments = publication.Comments.Select(comment => new CommentResponseDTO
+                    {
+                        Id = comment.Id,
+                        NombreUsuario = comment.Usuario.UserName,
+                        Contenido = comment.Contenido,
+                        FechaComentario = comment.FechaComentario
+                    }).ToList()
+                }).ToList();
+
+                return Ok(publicationsDTO);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error obteniendo todas las publicaciones");
+                return StatusCode(500, "Error interno");
+            }
+        }
     }
 }

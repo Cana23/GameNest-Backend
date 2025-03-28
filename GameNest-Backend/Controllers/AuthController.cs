@@ -33,14 +33,17 @@ public class AuthController : ControllerBase
     {
         try
         {
-            var user = new User { UserName = model.UserName, Email = model.Email };
+            var user = new User { UserName = model.UserName, Email = model.Email};
             var result = await _userManager.CreateAsync(user, model.Password);
 
             if (result.Succeeded)
             {
                 await _userManager.AddToRoleAsync(user, "User");
                 _logger.LogInformation($"Usuario {model.UserName} registrado exitosamente");
-                return Ok(new { message = "Registro exitoso" });
+                // Generar token JWT después del registro
+                var roles = await _userManager.GetRolesAsync(user);
+                var token = GenerateJwtToken(user, roles);
+                return Ok(new { message = "Registro exitoso", token });
             }
 
             return BadRequest(result.Errors);
@@ -55,14 +58,36 @@ public class AuthController : ControllerBase
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginDTO loginDto)
     {
-        var user = await _userManager.FindByNameAsync(loginDto.Email) ?? await _userManager.FindByEmailAsync(loginDto.Email);
-        if (user != null && await _userManager.CheckPasswordAsync(user, loginDto.Password))
+        _logger.LogInformation($"Intento de login con email: {loginDto.Email}");
+
+        var user = await _userManager.FindByEmailAsync(loginDto.Email);
+        if (user == null)
         {
-            var roles = await _userManager.GetRolesAsync(user);
-            var token = GenerateJwtToken(user, roles);
-            return Ok(new { token });
+            _logger.LogWarning($"Usuario con email {loginDto.Email} no encontrado.");
+            return Unauthorized();
         }
-        return Unauthorized();
+
+        var passwordValid = await _userManager.CheckPasswordAsync(user, loginDto.Password);
+        if (!passwordValid)
+        {
+            _logger.LogWarning($"Contraseña incorrecta para el usuario con email {loginDto.Email}.");
+            return Unauthorized();
+        }
+
+        var roles = await _userManager.GetRolesAsync(user);
+        var token = GenerateJwtToken(user, roles);
+        _logger.LogInformation($"Login exitoso para el usuario con email {loginDto.Email}.");
+
+        return Ok(new { token, user });
+
+        //var user = await _userManager.FindByNameAsync(loginDto.Email);
+        //if (user != null && await _userManager.CheckPasswordAsync(user, loginDto.Password))
+        //{
+        //    var roles = await _userManager.GetRolesAsync(user);
+        //    var token = GenerateJwtToken(user, roles);
+        //    return Ok(new { token });
+        //}
+        //return Unauthorized();
     }
 
     [HttpPost("logout")]
