@@ -77,9 +77,36 @@ namespace GameNest_Backend.Controllers
 
                 var publications = await _context.Publications
                     .Where(p => p.UserId == userGuid)
+                    .Include(p => p.Likes)
+                    .Include(p => p.Comments)
+                    .ThenInclude(c => c.Usuario)
                     .ToListAsync();
 
-                return Ok(publications);
+                if (publications == null) return NotFound();
+
+
+                var publicationsDTO = publications.Select(publication => new
+                {
+                    publication.Id,
+                    publication.Title,
+                    publication.Content,
+                    publication.ImageUrl,
+                    publication.PublicationDate,
+                    publication.UserId,
+                    publication.UserName,
+                    TotalLikes = publication.Likes.Count,
+                    TotalComments = publication.Comments.Count,
+                    Comments = publication.Comments.Select(comment => new CommentResponseDTO
+                    {
+                        Id = comment.Id,
+                        NombreUsuario = comment.Usuario.UserName,
+                        Contenido = comment.Contenido,
+                        FechaComentario = comment.FechaComentario
+                    }).ToList(),
+                    hasLiked = publication.Likes.Where(l => l.UsuarioId == Guid.Parse(userId) && l.IsDeleted == false).Any()
+                }).ToList();
+
+                return Ok(publicationsDTO);
             }
             catch (Exception ex)
             {
