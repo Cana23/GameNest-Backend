@@ -50,10 +50,89 @@ namespace GameNest_Backend.Controllers
             [HttpGet("{id}")]
             public async Task<IActionResult> GetComment(int id)
             {
-                var comment = await _commentService.GetCommentByIdAsync(id);
+                var comment = await _commentService.GetComment(id);
                 if (comment == null) return NotFound();
 
                 return Ok(comment);
+            }
+
+            // PUT: api/Comments/{CommentDTO}
+            [Authorize(Policy = "AllUsers")]
+            [HttpPut("{id}")]
+            public async Task<IActionResult> UpdateComment(int id, [FromBody] CommentUpdateDTO dto)
+            {
+                try
+                {
+                    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                    if (string.IsNullOrEmpty(userId))
+                        return Unauthorized("No se pudo obtener el ID del usuario.");
+
+
+                    var comment = await _commentService.GetComment(id);
+
+                    if (comment == null)
+                        return NotFound("Comentario no encontrado.");
+
+                    if (Guid.Parse(userId) != comment.UsuarioId)
+                    {
+                        return Unauthorized("No se puede modificar un comentario de otro usuario.");
+                    }
+
+                    var result = await _commentService.UpdateComment(dto, comment);
+
+                    if (!result.Success)
+                        return BadRequest(result.Message);
+
+                    return Ok(result.Message);
+                }
+                catch (Exception ex)
+                {
+                    return StatusCode(500, "Error interno");
+                }
+            }
+
+            // DELETE: api/Comments/{CommentId}    
+            [Authorize(Policy = "AllUsers")]
+            [HttpDelete("{id}")]
+            public async Task<IActionResult> DeleteComment(int id)
+            {
+                try
+                {
+                    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                    if (string.IsNullOrEmpty(userId))
+                        return Unauthorized("No se pudo obtener el ID del usuario.");
+
+                    var comment = await _commentService.GetComment(id);
+
+                    if (comment == null) return BadRequest("Este comentario no existe.");
+
+                    bool isAdmin = User.IsInRole("Admin");
+                    bool isOwner = comment.UsuarioId == Guid.Parse(userId);
+
+                    if (!isOwner && !isAdmin)
+                        return Unauthorized("No se puede eliminar un comentario de otro usuario.");
+
+                    var result = await _commentService.DeleteComment(id);
+
+                    if (!result.Success) return StatusCode(500, result.Message);
+
+                    return Ok(result.Message);
+                }
+                catch (Exception ex)
+                {
+                    return StatusCode(500, "Error interno");
+                }
+            }
+
+            private CommentResponseDTO MapToDto(Comment comment, string NombreUsuario)
+            {
+                return new CommentResponseDTO
+                {
+                    Id = comment.Id,
+                    NombreUsuario = NombreUsuario,
+                    Contenido = comment.Contenido,
+                    FechaComentario = comment.FechaComentario,
+                };
             }
         }
     }

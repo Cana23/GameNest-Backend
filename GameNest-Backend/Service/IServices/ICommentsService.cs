@@ -8,7 +8,9 @@ namespace GameNest_Backend.Services
     public interface ICommentsService
     {
         Task<Comment> CreateCommentAsync(CommentCreateDTO dto, Guid userId);
-        Task<CommentResponseDTO> GetCommentByIdAsync(int id);
+        Task<Comment> GetComment(int id);
         Task<IEnumerable<CommentResponseDTO>> GetCommentsForPublicationAsync(int publicacionId);
+        public Task<ResponseHelper> UpdateComment(CommentUpdateDTO commentUpdate, Comment comment);
+        public Task<ResponseHelper> DeleteComment(int id);
     }
 }

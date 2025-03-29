@@ -36,22 +36,14 @@ namespace GameNest_Backend.Services
         }
 
         // Obtener un comentario por ID
-        public async Task<CommentResponseDTO> GetCommentByIdAsync(int id)
+        public async Task<Comment> GetComment(int id)
         {
             var comment = await _context.Comments
                 .Include(c => c.Publicacion)
                 .Include(c => c.Usuario)
                 .FirstOrDefaultAsync(c => c.Id == id);
 
-            if (comment == null) return null;
-
-            return new CommentResponseDTO
-            {
-                Id = comment.Id,
-                NombreUsuario = comment.Usuario.UserName,
-                Contenido = comment.Contenido,
-                FechaComentario = comment.FechaComentario
-            };
+            return comment ?? new Comment();
         }
 
         // Obtener comentarios por publicación
@@ -70,6 +62,49 @@ namespace GameNest_Backend.Services
                 .ToListAsync();
 
             return comments;
+        }
+
+        public async Task<ResponseHelper> UpdateComment(CommentUpdateDTO commentUpdate, Comment comment)
+        {
+            ResponseHelper response = new();
+
+            try
+            {
+                comment.Contenido = commentUpdate.Contenido;
+                response.Success = await _context.SaveChangesAsync() > 0;
+                response.Message = "Comentario editado correctamente.";
+            }
+            catch (Exception ex)
+            {
+                response.Message = "Ocurrió un error al editar el comentario. Inténtelo más tarde.";
+            }
+            return response;
+        }
+
+        public async Task<ResponseHelper> DeleteComment(int id)
+        {
+            ResponseHelper response = new();
+
+            try
+            {
+                var comment = _context.Comments.FirstOrDefault(c => c.Id == id && c.IsDeleted == false);
+
+                if (comment == null)
+                {
+                    response.Message = "Comentario no encontrado o borrado.";
+                    return response;
+                }
+
+                comment.IsDeleted = true;
+
+                response.Success = await _context.SaveChangesAsync() > 0;
+                response.Message = "Comentario borrado correctamente.";
+            }
+            catch (Exception ex)
+            {
+                response.Message = "Ocurrió un error al eliminar el comentario. Inténtelo más tarde.";
+            }
+            return response;
         }
     }
 }
