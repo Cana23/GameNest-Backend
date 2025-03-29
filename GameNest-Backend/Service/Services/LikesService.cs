@@ -62,7 +62,17 @@ namespace GameNest_Backend.Service.Services
                     return response;
                 }
 
-                _context.Likes.Add(like);
+                    var DBlike = _context.Likes.FirstOrDefault(c => c.UsuarioId == like.UsuarioId && c.PublicacionId == like.PublicacionId && c.IsDeleted == true);
+                if(DBlike != null)
+                {
+                    DBlike.IsDeleted = false;
+                    _context.Likes.Update(DBlike);
+                }
+                else
+                {
+                    _context.Likes.Add(like);
+                }
+                    
                 response.Success = await _context.SaveChangesAsync() > 0;
                 response.Message = "Like agregado correctamente.";
             }
