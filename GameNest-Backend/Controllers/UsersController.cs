@@ -128,7 +128,7 @@ namespace GameNest_Backend.Controllers
 
                 if (result.Succeeded)
                 {
-                    await _userManager.AddToRoleAsync(user, "User");
+                    await _userManager.AddToRoleAsync(user, "Admin");
                     return Ok(new { message = "Usuario creado exitosamente" });
                 }
 
@@ -241,5 +241,57 @@ namespace GameNest_Backend.Controllers
                 return StatusCode(500, "Error interno");
             }
         }
+
+        // GET: api/users/role/user
+        [HttpGet("role/user")]
+        public async Task<IActionResult> GetUsersWithUserRole()
+        {
+            try
+            {
+                var users = await _userManager.GetUsersInRoleAsync("User");
+
+                var userDtos = users.Select(user => new UserListDTO
+                {
+                    Id = user.Id,
+                    UserName = user.UserName,
+                    Email = user.Email,
+                    FechaCreacion = user.FechaCreacion
+                }).ToList();
+
+                return Ok(userDtos);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error obteniendo los usuarios con rol 'User'");
+                return StatusCode(500, "Error interno del servidor");
+            }
+        }
+
+        // GET: api/users/role/admin
+        [HttpGet("role/admin")]
+        public async Task<IActionResult> GetUsersWithAdminRole()
+        {
+            try
+            {
+                var users = await _userManager.GetUsersInRoleAsync("Admin");
+
+                var userDtos = users.Select(user => new UserListDTO
+                {
+                    Id = user.Id,
+                    UserName = user.UserName,
+                    Email = user.Email,
+                    FechaCreacion = user.FechaCreacion
+                }).ToList();
+
+                return Ok(userDtos);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error obteniendo los usuarios con rol 'Admin'");
+                return StatusCode(500, "Error interno del servidor");
+            }
+        }
+
+
     }
 }
