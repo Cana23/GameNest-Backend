@@ -33,17 +33,28 @@ public class AuthController : ControllerBase
     {
         try
         {
-            var user = new User { UserName = model.UserName, Email = model.Email};
+            // Verificar si el nombre de usuario ya existe
+            var existingUserName = await _userManager.FindByNameAsync(model.UserName);
+            if (existingUserName != null)
+            {
+                return BadRequest(new { message = "El nombre de usuario ya está en uso." });
+            }
+
+            // Verificar si el correo electrónico ya existe
+            var existingEmail = await _userManager.FindByEmailAsync(model.Email);
+            if (existingEmail != null)
+            {
+                return BadRequest(new { message = "El correo electrónico ya está en uso." });
+            }
+
+            var user = new User { UserName = model.UserName, Email = model.Email };
             var result = await _userManager.CreateAsync(user, model.Password);
 
             if (result.Succeeded)
             {
                 await _userManager.AddToRoleAsync(user, "User");
                 _logger.LogInformation($"Usuario {model.UserName} registrado exitosamente");
-                // Generar token JWT después del registro
-                var roles = await _userManager.GetRolesAsync(user);
-                var token = GenerateJwtToken(user, roles);
-                return Ok(new { message = "Registro exitoso", token });
+                return Ok(new { message = "Registro exitoso" });
             }
 
             return BadRequest(result.Errors);
