@@ -1,5 +1,6 @@
 
 using GameNest_Backend.Models;
+using GameNest_Backend.Service.IServices;
 using GameNest_Backend.Service.Services;
 using GameNest_Backend.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -28,6 +29,7 @@ builder.Services.AddIdentity<User, IdentityRole<Guid>>()
 builder.Services.AddTransient<ICommentsService, CommentService>();
 builder.Services.AddTransient<IFollowersService, FollowersService>();
 builder.Services.AddTransient<ILikesService, LikesService>();
+builder.Services.AddScoped<ILogService, LogService>();
 
 builder.Services.AddAuthentication(options =>
 {
