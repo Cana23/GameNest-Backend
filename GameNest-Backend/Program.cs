@@ -25,7 +25,7 @@ builder.Services.AddIdentity<User, IdentityRole<Guid>>()
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
 
-builder.Services.AddTransient<ICommentsService, CommentService>();
+builder.Services.AddTransient<ICommentsService, CommentsService>();
 builder.Services.AddTransient<IFollowersService, FollowersService>();
 builder.Services.AddTransient<ILikesService, LikesService>();
 

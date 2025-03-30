@@ -1,4 +1,5 @@
-﻿using GameNest_Backend.DTOs;
+﻿using GameNest_Backend.Controllers;
+using GameNest_Backend.DTOs;
 using GameNest_Backend.Models;
 using GameNest_Backend.Service.Services;
 using Microsoft.EntityFrameworkCore;
@@ -9,13 +10,14 @@ using System.Threading.Tasks;
 
 namespace GameNest_Backend.Services
 {
-    public class CommentService : ICommentsService
+    public class CommentsService : ICommentsService
     {
         private readonly ApplicationDbContext _context;
-
-        public CommentService(ApplicationDbContext context)
+        private readonly ILogger<UsersController> _logger;
+        public CommentsService(ApplicationDbContext context, ILogger<UsersController> logger)
         {
             _context = context;
+            _logger = logger;
         }
 
         // Crear un comentario
@@ -44,6 +46,21 @@ namespace GameNest_Backend.Services
                 .FirstOrDefaultAsync(c => c.Id == id);
 
             return comment ?? new Comment();
+        }
+
+        public List<Comment> GetAllComments()
+        {
+            List<Comment> comments = new();
+            try
+            {
+                comments = _context.Comments.Where(c => c.IsDeleted == false).ToList();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Ocurrió un error al obtener todos los comentarios.");
+            }
+
+            return comments;
         }
 
         // Obtener comentarios por publicación

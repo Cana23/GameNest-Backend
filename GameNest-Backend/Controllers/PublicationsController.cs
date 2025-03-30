@@ -75,7 +75,7 @@ namespace GameNest_Backend.Controllers
 
             if (publication == null) return NotFound();
 
-            var commentsDTO = publication.Comments.Select(comment => new CommentResponseDTO
+            var commentsDTO = publication.Comments.Where(c => c.IsDeleted == false).Select(comment => new CommentResponseDTO
             {
                 Id = comment.Id,
                 NombreUsuario = comment.Usuario.UserName,
@@ -127,7 +127,7 @@ namespace GameNest_Backend.Controllers
                     publication.UserName,
                     TotalLikes = publication.Likes.Count,
                     TotalComments = publication.Comments.Count,
-                    Comments = publication.Comments.Select(comment => new CommentResponseDTO
+                    Comments = publication.Comments.Where(c => c.IsDeleted == false).Select(comment => new CommentResponseDTO
                     {
                         Id = comment.Id,
                         NombreUsuario = comment.Usuario.UserName,

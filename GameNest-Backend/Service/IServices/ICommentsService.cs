@@ -9,6 +9,7 @@ namespace GameNest_Backend.Services
     {
         Task<Comment> CreateCommentAsync(CommentCreateDTO dto, Guid userId);
         Task<Comment> GetComment(int id);
+        public List<Comment> GetAllComments();
         Task<IEnumerable<CommentResponseDTO>> GetCommentsForPublicationAsync(int publicacionId);
         public Task<ResponseHelper> UpdateComment(CommentUpdateDTO commentUpdate, Comment comment);
         public Task<ResponseHelper> DeleteComment(int id);

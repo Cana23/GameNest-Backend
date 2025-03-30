@@ -18,13 +18,49 @@ namespace GameNest_Backend.Controllers
         [Route("api/[controller]")]
         public class CommentsController : ControllerBase
         {
+            private readonly UserManager<User> _userManager;
+            private readonly ILogger<UsersController> _logger;
             private readonly ICommentsService _commentService;
+            public CommentsController(
 
-            public CommentsController(ICommentsService commentService)
+                UserManager<User> userManager,
+                ICommentsService commentService,
+                ILogger<UsersController> logger)
             {
+                _userManager = userManager;
                 _commentService = commentService;
+                _logger = logger;
             }
 
+            [Authorize(Policy = "AdminOnly")]
+            [HttpGet]
+            public async Task<IActionResult> GetAllComments()
+            {
+                try
+                {
+                    var comments = _commentService.GetAllComments();
+                    var commentDtos = new List<CommentResponseDTO>();
+
+                    foreach (var comment in comments)
+                    {
+                        var user = await _userManager.FindByIdAsync(comment.UsuarioId.ToString());
+
+                        if (user == null)
+                        {
+                            continue;
+                        }
+
+                        commentDtos.Add(MapToDto(comment, user.UserName));
+                    }
+
+                    return Ok(commentDtos);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error obteniendo comentarios.");
+                    return StatusCode(500, "Error interno");
+                }
+            }
             // POST: api/comments
             [HttpPost]
             public async Task<IActionResult> CreateComment([FromBody] CommentCreateDTO dto)
