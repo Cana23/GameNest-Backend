@@ -85,7 +85,7 @@ namespace GameNest_Backend.Controllers
                 if (publications == null) return NotFound();
 
 
-                var publicationsDTO = publications.Select(publication => new
+                var publicationsDTO = publications.Where(p => p.IsDeleted == false).Select(publication => new
                 {
                     publication.Id,
                     publication.Title,
