@@ -1,4 +1,5 @@
 
+using GameNest_Backend.Middleware;
 using GameNest_Backend.Models;
 using GameNest_Backend.Service.IServices;
 using GameNest_Backend.Service.Services;
@@ -25,6 +26,8 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 builder.Services.AddIdentity<User, IdentityRole<Guid>>()
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
+
+
 
 builder.Services.AddTransient<ICommentsService, CommentsService>();
 builder.Services.AddTransient<IFollowersService, FollowersService>();
@@ -201,6 +204,8 @@ using (var scope = app.Services.CreateScope())
         .Where(rt => rt.RevokedAt < DateTime.UtcNow.AddDays(-30))
         .ExecuteDeleteAsync();
 }
+
+app.UseMiddleware<LoggingMiddleware>();
 
 
 app.UseSwagger();

@@ -1,5 +1,11 @@
-﻿using GameNest_Backend.Service.IServices;
+﻿using System;
+using GameNest_Backend.Service.IServices;
 using Microsoft.AspNetCore.Mvc;
+using GameNest_Backend.Models;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
+
 
 namespace GameNest_Backend.Controllers
 {
@@ -7,29 +13,19 @@ namespace GameNest_Backend.Controllers
     [Route("api/[controller]")]
     public class LogsController : ControllerBase
     {
-        private readonly ILogService _logService;
+        private readonly ApplicationDbContext _context;
 
-        public LogsController(ILogService logService)
+        public LogsController(ApplicationDbContext context)
         {
-            _logService = logService;
+            _context = context;
         }
 
+        // Endpoint para obtener todos los logs
         [HttpGet]
-        public async Task<IActionResult> GetLogs()
+        public async Task<ActionResult<IEnumerable<LogEntry>>> GetLogs()
         {
-            try
-            {
-                var logs = await _logService.GetLogsAsync();
-                return Ok(logs);
-            }
-            catch (FileNotFoundException ex)
-            {
-                return NotFound(ex.Message);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, $"Error al leer los logs: {ex.Message}");
-            }
+            var logs = await _context.Logs.ToListAsync();
+            return Ok(logs);
         }
     }
 }

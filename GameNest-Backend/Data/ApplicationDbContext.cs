@@ -19,8 +19,8 @@ public class ApplicationDbContext : IdentityDbContext<
     public DbSet<Comment> Comments { get; set; }
     public DbSet<Follower> Followers { get; set; }
     public DbSet<Like> Likes { get; set; }
-    public DbSet<RevokedToken> RevokedTokens { get; set; } 
-
+    public DbSet<RevokedToken> RevokedTokens { get; set; }
+    public DbSet<LogEntry> Logs { get; set; }
 
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
         : base(options) { }
@@ -82,5 +82,14 @@ public class ApplicationDbContext : IdentityDbContext<
             .HasOne(p => p.User)
             .WithMany(u => u.Publications)
             .HasForeignKey(p => p.UserId);
+
+        // Configuracion de LogEntry
+        modelBuilder.Entity<LogEntry>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Method).IsRequired();
+            entity.Property(e => e.Path).IsRequired();
+            entity.Property(e => e.Timestamp).HasDefaultValueSql("GETUTCDATE()");
+        });
     }
 }
