@@ -13,7 +13,7 @@ namespace GameNest_Backend.Service.Services
 
         public async Task<string[]> GetLogsAsync()
         {
-            var logBasePath = "C:\\Users\\ethan\\Documents\\GameNest\\logs\\";
+            var logBasePath = "C:\\Users\\boris.cruz\\Documents\\GameNest\\logs\\";
 
             var today = DateTime.Now.ToString("yyyyMMdd");
             var logFileName = $"logs{today}.txt";

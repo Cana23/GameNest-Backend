@@ -319,6 +319,24 @@ namespace GameNest_Backend.Controllers
             }
         }
 
+        [HttpGet("verifyadmin")]
+        public async Task<IActionResult> IsAdmin()
+        {
+            try
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (string.IsNullOrEmpty(userId))
+                    return Unauthorized("No se pudo obtener el ID del usuario.");
 
+                bool isAdmin = User.IsInRole("Admin");
+
+                return Ok(isAdmin);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error validando rol 'Admin'");
+                return StatusCode(500, "Error interno del servidor");
+            }
+        }
     }
 }
